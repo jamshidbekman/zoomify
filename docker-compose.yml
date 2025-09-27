@@ -6,14 +6,14 @@ services:
     container_name: zoomify_app
     restart: always
     ports:
-      - '5000:5000'
+      - '4000:4000'
     env_file:
       - .env
     depends_on:
       - zoomify_postgres
       - zoomify_redis
     volumes:
-      - zoomify_session:/app/session_db.json
+      - zoomify_sessions:/app/sessions
     networks:
       - zoomify_network
 
@@ -47,7 +47,7 @@ services:
 volumes:
   zoomify_postgres_data:
   zoomify_redis_data:
-  zoomify_session:
+  zoomify_sessions:
 
 networks:
   zoomify_network:

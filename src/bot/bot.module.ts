@@ -25,7 +25,7 @@ import { LessonModule } from 'src/modules/lesson/lesson.module';
             }
             return next();
           },
-          new LocalSession({ database: 'session_db.json' }).middleware(),
+          new LocalSession({ database: 'sessions/session_db.json' }).middleware(),
         ],
       }),
       inject: [ConfigService],

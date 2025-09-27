@@ -54,7 +54,7 @@ jobs:
 
             # docker-compose.yml ni yozamiz
             cat > docker-compose.yml << 'EOL'
-            version: '3.8'
+            version: '3'
 
             services:
               app:
@@ -62,16 +62,14 @@ jobs:
                 container_name: zoomify_app
                 restart: always
                 ports:
-                  - '5000:5000'
+                  - '4000:4000'
                 env_file:
                   - .env
                 depends_on:
-                  zoomify_postgres:
-                    condition: service_healthy
-                  zoomify_redis:
-                    condition: service_healthy
+                  - zoomify_postgres
+                  - zoomify_redis
                 volumes:
-                  - zoomify_session:/app/session_db.json
+                  - zoomify_sessions:/app/sessions
                 networks:
                   - zoomify_network
 
@@ -89,11 +87,6 @@ jobs:
                   - zoomify_postgres_data:/var/lib/postgresql/data
                 networks:
                   - zoomify_network
-                healthcheck:
-                  test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
-                  interval: 10s
-                  timeout: 5s
-                  retries: 5
 
               zoomify_redis:
                 image: redis:7.2-alpine
@@ -106,16 +99,11 @@ jobs:
                   - zoomify_redis_data:/data
                 networks:
                   - zoomify_network
-                healthcheck:
-                  test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-                  interval: 10s
-                  timeout: 5s
-                  retries: 5
 
             volumes:
               zoomify_postgres_data:
               zoomify_redis_data:
-              zoomify_session:
+              zoomify_sessions:
 
             networks:
               zoomify_network:
