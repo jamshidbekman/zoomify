@@ -1,4 +1,4 @@
-name: Deploy NestJS to Ubuntu Server
+name: Deploy Zoomify Bot
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,23 +40,17 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # App papkasiga kirish
             mkdir -p ~/zoomify
             cd ~/zoomify
-            
-            # ENV file yaratish
+
             printf "%s" "${{ secrets.ENV_FILE }}" > .env
-            
-            # Eski containerlarni to'xtatish
-            docker compose down || true
-            
-            # Eski image'ni o'chirish (agar bo'lsa)
+
+            docker-compose down || true
+
             docker rmi ${{ secrets.DOCKER_USERNAME }}/zoomify:latest || true
-            
-            # Yangi image olish
+
             docker pull ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
-            
-            # docker-compose.yml ni yangilash
+
             cat > docker-compose.yml << 'EOL'
             version: '3.8'
 
@@ -74,11 +69,9 @@ jobs:
                   zoomify_redis:
                     condition: service_healthy
                 volumes:
-                  - ./session_db.json:/app/session_db.json  
-                  # - ./logs:/app/logs                    
+                  - ./session_db.json:/app/session_db.json
                 networks:
                   - zoomify_network
-                pull_policy: always
 
               zoomify_postgres:
                 image: postgres:16-alpine
@@ -125,17 +118,14 @@ jobs:
               zoomify_network:
                 driver: bridge
             EOL
-            
-            # Containerlarni qaytadan ishga tushirish
-            docker compose pull
-            docker compose up -d --force-recreate
-            
-            # Eski image'larni tozalash
+
+            docker-compose pull
+            docker-compose up -d --force-recreate
+
             docker image prune -a -f --filter "until=24h"
-            
-            # Holatini tekshirish
+
             sleep 15
             echo "=== Container status ==="
             docker ps --filter "name=zoomify_app"
             echo "=== Application logs ==="
-            docker compose logs --tail=30 app
+            docker-compose logs --tail=30 app

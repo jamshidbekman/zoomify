@@ -15,11 +15,9 @@ services:
       zoomify_redis:
         condition: service_healthy
     volumes:
-      - ./session_db.json:/app/session_db.json   # sessiya fayl saqlanadi
-      # - ./logs:/app/logs                       # agar loglarni ham saqlashni istasangiz
+      - ./session_db.json:/app/session_db.json
     networks:
       - zoomify_network
-    pull_policy: always
 
   zoomify_postgres:
     image: postgres:16-alpine
@@ -36,7 +34,7 @@ services:
     networks:
       - zoomify_network
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME}']
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,7 +51,7 @@ services:
     networks:
       - zoomify_network
     healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
