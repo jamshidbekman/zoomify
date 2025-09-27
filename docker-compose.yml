@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  app:
+    image: jamshidbekmansurov/zoomify:latest
+    container_name: zoomify_app
+    restart: always
+    ports:
+      - '4000:4000'
+    env_file:
+      - .env
+    depends_on:
+      zoomify_postgres:
+        condition: service_healthy
+      zoomify_redis:
+        condition: service_healthy
+    volumes:
+      - zoomify_session:/app/session_db.json
+      # - zoomify_logs:/app/logs
+    networks:
+      - zoomify_network
+    pull_policy: always
+
+  zoomify_postgres:
+    image: postgres:16-alpine
+    container_name: zoomify_postgres
+    restart: always
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - zoomify_postgres_data:/var/lib/postgresql/data
+    networks:
+      - zoomify_network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zoomify_redis:
+    image: redis:7.2-alpine
+    container_name: zoomify_redis
+    restart: always
+    ports:
+      - '6380:6379'
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - zoomify_redis_data:/data
+    networks:
+      - zoomify_network
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  zoomify_postgres_data:
+  zoomify_redis_data:
+  zoomify_uploads:
+  zoomify_logs:
+
+networks:
+  zoomify_network:
+    driver: bridge

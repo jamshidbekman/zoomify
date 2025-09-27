@@ -1,0 +1,142 @@
+name: Deploy NestJS to Ubuntu Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
+            ${{ secrets.DOCKER_USERNAME }}/zoomify:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/zoomify:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/zoomify:buildcache,mode=max
+      
+      - name: Deploy to Ubuntu Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # Application directory
+            mkdir -p ~/zoomify
+            cd ~/zoomify
+            
+            # Create .env file from GitHub secret
+            printf "%s" "${{ secrets.ENV_FILE }}" > .env
+            
+            # Stop current containers
+            docker-compose down || true
+            
+            # Remove old images to force fresh pull
+            docker rmi ${{ secrets.DOCKER_USERNAME }}/zoomify:latest || true
+            
+            # Pull the latest image
+            docker pull ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
+            
+            # Create or update docker-compose.yml
+            cat > docker-compose.yml << 'EOL'
+            version: '3.8'
+
+            services:
+              app:
+                image: ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
+                container_name: zoomify_app
+                restart: always
+                ports:
+                  - '4000:4000'
+                env_file:
+                  - .env
+                depends_on:
+                  zoomify_postgres:
+                    condition: service_healthy
+                  zoomify_redis:
+                    condition: service_healthy
+                volumes:
+                  - zoomify_session:/app/session_db.json
+                networks:
+                  - zoomify_network
+                pull_policy: always
+
+              zoomify_postgres:
+                image: postgres:16-alpine
+                container_name: zoomify_postgres
+                restart: always
+                ports:
+                  - '5433:5432'
+                environment:
+                  - POSTGRES_USER=${DB_USERNAME}
+                  - POSTGRES_PASSWORD=${DB_PASSWORD}
+                  - POSTGRES_DB=${DB_NAME}
+                volumes:
+                  - zoomify_postgres_data:/var/lib/postgresql/data
+                networks:
+                  - zoomify_network
+                healthcheck:
+                  test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+
+              zoomify_redis:
+                image: redis:7.2-alpine
+                container_name: zoomify_redis
+                restart: always
+                ports:
+                  - '6380:6379'
+                command: redis-server --requirepass ${REDIS_PASSWORD}
+                volumes:
+                  - zoomify_redis_data:/data
+                networks:
+                  - zoomify_network
+                healthcheck:
+                  test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+
+            volumes:
+              zoomify_postgres_data:
+              zoomify_redis_data:
+              zoomify_uploads:
+              zoomify_logs:
+
+            networks:
+              zoomify_network:
+                driver: bridge
+            EOL
+            
+            # Start the application with fresh pull
+            docker-compose pull
+            docker-compose up -d --force-recreate
+            
+            # Prune unused images to save disk space
+            docker image prune -a -f --filter "until=24h"
+            
+            # Check if application started successfully
+            sleep 15
+            echo "=== Container status ==="
+            docker ps --filter "name=zoomify_app"
+            echo "=== Application logs ==="
+            docker-compose logs --tail=30 app
