@@ -15,8 +15,8 @@ services:
       zoomify_redis:
         condition: service_healthy
     volumes:
-      - zoomify_session:/app/session_db.json
-      # - zoomify_logs:/app/logs
+      - ./session_db.json:/app/session_db.json   # sessiya fayl saqlanadi
+      # - ./logs:/app/logs                       # agar loglarni ham saqlashni istasangiz
     networks:
       - zoomify_network
     pull_policy: always
@@ -61,7 +61,6 @@ services:
 volumes:
   zoomify_postgres_data:
   zoomify_redis_data:
-  zoomify_session:
 
 networks:
   zoomify_network:

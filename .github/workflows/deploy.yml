@@ -39,23 +39,23 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # Application directory
+            # App papkasiga kirish
             mkdir -p ~/zoomify
             cd ~/zoomify
             
-            # Create .env file from GitHub secret
+            # ENV file yaratish
             printf "%s" "${{ secrets.ENV_FILE }}" > .env
             
-            # Stop current containers
-            docker-compose down || true
+            # Eski containerlarni to'xtatish
+            docker compose down || true
             
-            # Remove old images to force fresh pull
+            # Eski image'ni o'chirish (agar bo'lsa)
             docker rmi ${{ secrets.DOCKER_USERNAME }}/zoomify:latest || true
             
-            # Pull the latest image
+            # Yangi image olish
             docker pull ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
             
-            # Create or update docker-compose.yml
+            # docker-compose.yml ni yangilash
             cat > docker-compose.yml << 'EOL'
             version: '3.8'
 
@@ -74,7 +74,8 @@ jobs:
                   zoomify_redis:
                     condition: service_healthy
                 volumes:
-                  - zoomify_session:/app/session_db.json
+                  - ./session_db.json:/app/session_db.json  
+                  # - ./logs:/app/logs                    
                 networks:
                   - zoomify_network
                 pull_policy: always
@@ -119,23 +120,22 @@ jobs:
             volumes:
               zoomify_postgres_data:
               zoomify_redis_data:
-              zoomify_session:
 
             networks:
               zoomify_network:
                 driver: bridge
             EOL
             
-            # Start the application with fresh pull
-            docker-compose pull
-            docker-compose up -d --force-recreate
+            # Containerlarni qaytadan ishga tushirish
+            docker compose pull
+            docker compose up -d --force-recreate
             
-            # Prune unused images to save disk space
+            # Eski image'larni tozalash
             docker image prune -a -f --filter "until=24h"
             
-            # Check if application started successfully
+            # Holatini tekshirish
             sleep 15
             echo "=== Container status ==="
             docker ps --filter "name=zoomify_app"
             echo "=== Application logs ==="
-            docker-compose logs --tail=30 app
+            docker compose logs --tail=30 app
