@@ -43,14 +43,16 @@ jobs:
             mkdir -p ~/zoomify
             cd ~/zoomify
 
+            # .env ni yangilab yozamiz
             printf "%s" "${{ secrets.ENV_FILE }}" > .env
 
-            docker-compose down || true
+            # Eski konteynerlarni to'xtatamiz
+            docker compose down || true
 
-            docker rmi ${{ secrets.DOCKER_USERNAME }}/zoomify:latest || true
-
+            # Eng so'nggi imijni olib kelamiz
             docker pull ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
 
+            # docker-compose.yml ni yozamiz
             cat > docker-compose.yml << 'EOL'
             version: '3.8'
 
@@ -69,7 +71,7 @@ jobs:
                   zoomify_redis:
                     condition: service_healthy
                 volumes:
-                  - ./session_db.json:/app/session_db.json
+                  - zoomify_session:/app/session_db.json
                 networks:
                   - zoomify_network
 
@@ -113,19 +115,21 @@ jobs:
             volumes:
               zoomify_postgres_data:
               zoomify_redis_data:
+              zoomify_session:
 
             networks:
               zoomify_network:
                 driver: bridge
             EOL
 
-            docker-compose pull
-            docker-compose up -d --force-recreate
+            # Yangidan ishga tushiramiz
+            docker compose up -d --force-recreate
 
+            # Eski imijlarni tozalash
             docker image prune -a -f --filter "until=24h"
 
             sleep 15
             echo "=== Container status ==="
             docker ps --filter "name=zoomify_app"
             echo "=== Application logs ==="
-            docker-compose logs --tail=30 app
+            docker compose logs --tail=30 app

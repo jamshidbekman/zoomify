@@ -15,7 +15,7 @@ services:
       zoomify_redis:
         condition: service_healthy
     volumes:
-      - ./session_db.json:/app/session_db.json
+      - zoomify_session:/app/session_db.json
     networks:
       - zoomify_network
 
@@ -59,6 +59,7 @@ services:
 volumes:
   zoomify_postgres_data:
   zoomify_redis_data:
+  zoomify_session:
 
 networks:
   zoomify_network:
