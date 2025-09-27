@@ -43,13 +43,13 @@ jobs:
             mkdir -p ~/zoomify
             cd ~/zoomify
 
-            # .env ni yangilab yozamiz
+            # .env faylini yozamiz
             printf "%s" "${{ secrets.ENV_FILE }}" > .env
 
             # Eski konteynerlarni to'xtatamiz
-            docker compose down || true
+            docker-compose down || true
 
-            # Eng so'nggi imijni olib kelamiz
+            # Eng so'nggi imageni olib kelamiz
             docker pull ${{ secrets.DOCKER_USERNAME }}/zoomify:latest
 
             # docker-compose.yml ni yozamiz
@@ -62,7 +62,7 @@ jobs:
                 container_name: zoomify_app
                 restart: always
                 ports:
-                  - '4000:4000'
+                  - '5000:5000'
                 env_file:
                   - .env
                 depends_on:
@@ -122,14 +122,15 @@ jobs:
                 driver: bridge
             EOL
 
-            # Yangidan ishga tushiramiz
-            docker compose up -d --force-recreate
+            # Konteynerlarni ishga tushiramiz
+            docker-compose up -d --force-recreate
 
-            # Eski imijlarni tozalash
+            # Eski imagelarni tozalaymiz
             docker image prune -a -f --filter "until=24h"
 
+            # Natijani tekshiramiz
             sleep 15
             echo "=== Container status ==="
-            docker ps --filter "name=zoomify_app"
+            docker ps --filter "name=zoomify"
             echo "=== Application logs ==="
-            docker compose logs --tail=30 app
+            docker-compose logs --tail=30 app
