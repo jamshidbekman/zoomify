@@ -61,8 +61,7 @@ services:
 volumes:
   zoomify_postgres_data:
   zoomify_redis_data:
-  zoomify_uploads:
-  zoomify_logs:
+  zoomify_session:
 
 networks:
   zoomify_network:
