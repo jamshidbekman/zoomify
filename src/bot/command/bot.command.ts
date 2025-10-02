@@ -5,6 +5,7 @@ import { OpenAIService } from 'src/modules/openai/openai.service';
 import { ReminderService } from 'src/modules/reminder/reminder.service';
 import { TelegramGroupService } from 'src/modules/telegram-group/telegram-group.service';
 import { Context, Markup } from 'telegraf';
+import { getHours, isBefore, isToday, startOfDay } from 'date-fns';
 
 @Update()
 @Injectable()
@@ -107,20 +108,24 @@ export class BotCommand {
 
     try {
       const group = await this.tgGroupService.getGroup(reminder.tg_group_id);
-      const chat = await ctx.telegram.getChat(reminder.tg_group_id);
-
       let link: string | null = null;
-      if ('username' in chat && chat.username) {
-        link = `https://t.me/${chat.username}`;
-      } else {
-        try {
-          const invite = await ctx.telegram.createChatInviteLink(
-            reminder.tg_group_id,
-          );
-          link = invite.invite_link;
-        } catch {
-          link = null;
+      try {
+        const chat = await ctx.telegram.getChat(reminder.tg_group_id);
+
+        if ('username' in chat && chat.username) {
+          link = `https://t.me/${chat.username}`;
+        } else {
+          try {
+            const invite = await ctx.telegram.createChatInviteLink(
+              reminder.tg_group_id,
+            );
+            link = invite.invite_link;
+          } catch {
+            link = null;
+          }
         }
+      } catch {
+        link = null;
       }
 
       let message = `📌 Eslatma nomi: ${reminder.title}\n`;
@@ -128,7 +133,9 @@ export class BotCommand {
         message += `🕒 Birinchi eslatma sanasi: ${reminder.start_date}\n`;
       }
       message += `👥 Guruh: ${group?.title}\n`;
-      message += link ? `🔗 Guruh havolasi: ${link}\n` : `❌ mavjud emas\n`;
+      message += link
+        ? `🔗 Guruh havolasi: ${link}\n`
+        : `🔗 Guruh havolasi: ❌ mavjud emas\n`;
       message += `🗓️ Darslar soni: ${reminder.lessons.length}\n`;
 
       await ctx.editMessageText(
@@ -238,6 +245,25 @@ export class BotCommand {
       if (!lessons.is_valid) {
         await ctx.reply(
           '⚠️ Jadvalda noaniqlik bor, qaytadan aniq qilib yuboring!',
+        );
+        return;
+      }
+
+      const startDate = new Date(lessons.start_date);
+      const now = new Date();
+      const currentHour = getHours(now);
+
+      if (isBefore(startDate, startOfDay(now))) {
+        await ctx.reply(
+          `⚠️ Kechagi yoki undan oldingi sanaga jadval qo'shib bo'lmaydi. Iltimos, bugun yoki bugundan keyingi sanadan boshlangan jadval yuboring!`,
+        );
+        return;
+      }
+
+      if (isToday(startDate) && currentHour >= 6) {
+        await ctx.reply(
+          "⚠️ Bugungi eslatmalar soat 06:00 da ishga tushiriladi. Hozir soat 06:00 dan o'tgan, shuning uchun bugungi eslatma ishlamaydi.\n\n" +
+            'Iltimos, ertangi yoki undan keyingi sanadan boshlangan jadval yuboring!',
         );
         return;
       }

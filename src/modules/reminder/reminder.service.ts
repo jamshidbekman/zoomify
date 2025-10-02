@@ -22,7 +22,10 @@ export class ReminderService {
 
     if (!user) return null;
 
-    const create = this.repository.create({ ...reminder, user: { ...user } });
+    const create = this.repository.create({
+      ...reminder,
+      user: { id: user.id },
+    });
 
     return await this.repository.save(create);
   }

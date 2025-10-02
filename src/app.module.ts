@@ -11,6 +11,8 @@ import { LessonModule } from './modules/lesson/lesson.module';
 import { ReminderModule } from './modules/reminder/reminder.module';
 import { QueueModule } from './queue/queue.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ExpressAdapter } from '@bull-board/express';
+import { BullBoardModule } from '@bull-board/nestjs';
 
 @Module({
   imports: [
@@ -47,6 +49,10 @@ import { ScheduleModule } from '@nestjs/schedule';
         };
       },
       inject: [ConfigService],
+    }),
+    BullBoardModule.forRoot({
+      route: '/admin/queues',
+      adapter: ExpressAdapter,
     }),
     ScheduleModule.forRoot(),
     BotModule,
