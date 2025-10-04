@@ -9,15 +9,12 @@ export class QueueProcessor {
 
   @Process('lessonReminder')
   async handleLessonReminder(job: Job) {
-    const { chat_id, message } = job.data;
-    await this.bot.telegram.sendMessage(chat_id, message);
-  }
+    const { chat_id, message, options } = job.data;
 
-  @Process('morningSummary')
-  async handleMorningSummary(job: Job) {
-    const { chat_id, message } = job.data;
-    await this.bot.telegram.sendMessage(chat_id, message, {
-      parse_mode: 'Markdown',
-    });
+    try {
+      await this.bot.telegram.sendMessage(chat_id, message, options);
+    } catch (error) {
+      console.error('❌ Xabar yuborishda xatolik:', error);
+    }
   }
 }

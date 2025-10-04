@@ -1,7 +1,10 @@
+import { toZonedTime } from 'date-fns-tz';
 import { InjectQueue } from '@nestjs/bull';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bull';
 import { LessonDocument } from 'src/modules/lesson/types/lesson';
+import { subMinutes, format } from 'date-fns';
+import { Markup } from 'telegraf';
 
 @Injectable()
 export class QueueService {
@@ -11,16 +14,36 @@ export class QueueService {
   ) {}
 
   async addLessonReminder(lesson: LessonDocument, tg_group_id: string) {
-    const startDate = new Date(lesson.start);
-    const remindAt = new Date(startDate.getTime() - 1 * 60 * 1000);
+    const timeZone = 'Asia/Tashkent';
+    const lessonStart = toZonedTime(new Date(lesson.start), timeZone);
+    const remindAt = subMinutes(lessonStart, 1);
+    const nowInTashkent = toZonedTime(new Date(), timeZone);
+    const delay = remindAt.getTime() - nowInTashkent.getTime();
+    const message = `
+🎓 *Dars boshlanmoqda!*
+
+📚 *Fan:* ${lesson.subject}
+👨‍🏫 *O‘qituvchi:* ${lesson.teacher_name}
+🕒 *Boshlanish vaqti:* ${format(lessonStart, 'HH:mm')}
+
+Darsga o‘z vaqtida qo‘shiling 👇
+`;
+    const replyMarkup = Markup.inlineKeyboard([
+      Markup.button.url('🔗 Darsga kirish', lesson.meet),
+    ]);
+
     await this.notifQueue.add(
       'lessonReminder',
       {
         chat_id: tg_group_id,
-        message: `📚 Fan: *${lesson.subject}*\n👨‍🏫 O'qituvchi: ${lesson.teacher_name}\n 🕒 Vaqt: ${lesson.start} - ${lesson.end}\n 🔗 Dars havolasi:${lesson.meet}`,
+        message,
+        options: {
+          parse_mode: 'Markdown',
+          ...replyMarkup,
+        },
       },
       {
-        delay: remindAt.getTime() - Date.now(),
+        delay: Math.max(delay, 0),
         removeOnComplete: true,
       },
     );
