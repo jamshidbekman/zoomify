@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { fromZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { subMinutes, format } from 'date-fns';
 import { Markup } from 'telegraf';
 import { LessonDocument } from 'src/modules/lesson/types/lesson';
@@ -24,7 +24,7 @@ export class QueueService {
 
 📚 *Fan:* ${lesson.subject}
 👨‍🏫 *O‘qituvchi:* ${lesson.teacher_name}
-🕒 *Boshlanish vaqti:* ${format(new Date(lessonStart), 'HH:mm')}
+🕒 *Boshlanish vaqti:* ${formatInTimeZone(lessonStart, 'Asia/Tashkent', 'HH:mm')}
 
 Darsga o‘z vaqtida qo‘shiling 👇
 `;

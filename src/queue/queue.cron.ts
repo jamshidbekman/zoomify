@@ -10,7 +10,7 @@ export class QueueCron {
     private readonly queueService: QueueService,
   ) {}
 
-  @Cron('15 11 * * *', {
+  @Cron('0 6 * * *', {
     timeZone: 'Asia/Tashkent',
   })
   async scheduleDailyReminders() {

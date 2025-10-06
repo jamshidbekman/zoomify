@@ -260,13 +260,13 @@ export class BotCommand {
         return;
       }
 
-      // if (isToday(startDate) && currentHour >= 6) {
-      //   await ctx.reply(
-      //     "⚠️ Bugungi eslatmalar soat 06:00 da ishga tushiriladi. Hozir soat 06:00 dan o'tgan, shuning uchun bugungi eslatma ishlamaydi.\n\n" +
-      //       'Iltimos, ertangi yoki undan keyingi sanadan boshlangan jadval yuboring!',
-      //   );
-      //   return;
-      // }
+      if (isToday(startDate) && currentHour >= 6) {
+        await ctx.reply(
+          "⚠️ Bugungi eslatmalar soat 06:00 da ishga tushiriladi. Hozir soat 06:00 dan o'tgan, shuning uchun bugungi eslatma ishlamaydi.\n\n" +
+            'Iltimos, ertangi yoki undan keyingi sanadan boshlangan jadval yuboring!',
+        );
+        return;
+      }
 
       const reminder = await this.reminderService.create({
         title: ctx.session.title,
