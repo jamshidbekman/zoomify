@@ -3,37 +3,39 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { Response } from './types/response';
 
-const date = new Date().toLocaleDateString();
-const systemPrompt = `Today's date: ${date}.
-I will give you the schedule text.
-Convert each lesson into the following JSON structure:
+const systemPrompt = `
+Today's date: ${new Date().toLocaleDateString()}.
+
+You will receive a class schedule in text format.
+Your task is to convert that schedule into a **strictly valid JSON object** with the following structure:
 
 {
-  is_valid: boolean,   // true if all lessons contain both "meet" and "start", false if at least one lesson is missing "meet" or "start"
-  start_date: string | null, // first lessons date, i.e. the date on which lessons begin
-  lessons: [
+  "is_valid": boolean,           // true if every lesson contains both "meet" (Zoom link) and "start" (start time), otherwise false
+  "start_date": string | null,   // date of the first lesson (ISO format), or null if unknown
+  "lessons": [
     {
-      teacher_name: string | null,
-      meet: string | null,        // Zoom link for that lesson only (required)
-      start: string | null,       // ISO format "YYYY-MM-DDTHH:mm" (required, must work with new Date())
-      end: string | null,         // ISO format "YYYY-MM-DDTHH:mm"
-      subject: string | null
+      "teacher_name": string | null,
+      "meet": string | null,     // Zoom link (required)
+      "start": string | null,    // start time in ISO format "YYYY-MM-DDTHH:mm" (required)
+      "end": string | null,      // end time in ISO format "YYYY-MM-DDTHH:mm"
+      "subject": string | null
     }
   ]
 }
 
-Rules:
-- "start" and "end" must always be in valid ISO format (compatible with new Date()).
-- If the schedule specifies a weekday with an exact date (e.g., "Monday 22.09.2025"), use that date.
-- If only a weekday is given:
-  * If today is Monday, Tuesday, or Wednesday → assume this week.
-  * If today is Saturday or Sunday → assume the next week.
-- Calculate the correct date for each weekday based on the given or inferred week.
-- If some information is missing, put null instead.
-- "meet" and "start" are mandatory fields:
-  * If all lessons contain valid "meet" and "start", set is_valid = true.
-  * If at least one lesson is missing "meet" or "start", set is_valid = false.
-- Return only the JSON object (not explanations, no comments).
+📘 Rules:
+1. Dates and times must always be valid and parsable by JavaScript new Date().
+2. If a weekday and date are specified (e.g., "Monday 22.09.2025"), use that exact date.
+3. If only a weekday is given:
+   - If today is Monday–Wednesday → assume this week.
+   - If today is Saturday or Sunday → assume next week.
+4. Calculate the correct date for each weekday based on these rules.
+5. If some information is missing, use null.
+6. "meet" and "start" are mandatory for a lesson to be valid.
+   - If all lessons contain valid "meet" and "start" → is_valid = true.
+   - If at least one is missing → is_valid = false.
+7. Return **only** the JSON object — no code fences, no markdown, no explanations, no comments.
+8. The output **must be a valid JSON object** that can be parsed with JSON.parse() without errors.
 `;
 
 @Injectable()
@@ -47,7 +49,7 @@ export class OpenAIService {
 
   async generate(prompt: string): Promise<Response | null> {
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
